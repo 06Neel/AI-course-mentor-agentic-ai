@@ -1,6 +1,7 @@
 import streamlit as st
 import sys
 import os
+import re
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -10,6 +11,7 @@ from utils.document_processor import DocumentProcessor
 from utils.security import SecurityManager
 from utils.formatters import ResponseFormatter
 from utils.conversation_manager import ConversationManager
+from utils.ppt_generator import PPTGenerator
 from rag.vector_store import VectorStore
 from agents.coordinator import CoordinatorAgent
 from agents.rag_agent import RAGAgent
@@ -130,12 +132,36 @@ def display_message(role, content, agent="", sources=None):
                 f'<span class="agent-badge" style="background:{color}20;color:{color};border:1px solid {color}">{label}</span>',
                 unsafe_allow_html=True,
             )
-        formatted = ResponseFormatter.format_response(content, agent)
+
+        ppt_path = _extract_ppt_path(content)
+        clean_content = _remove_ppt_marker(content)
+        formatted = ResponseFormatter.format_response(clean_content, agent)
         st.markdown(formatted)
+
+        if ppt_path and os.path.exists(ppt_path):
+            ppt_bytes = PPTGenerator.get_download_bytes(ppt_path)
+            filename = os.path.basename(ppt_path)
+            st.download_button(
+                label="Download PowerPoint",
+                data=ppt_bytes,
+                file_name=filename,
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                use_container_width=True,
+            )
+
         if sources:
             with st.expander("📚 Sources", expanded=False):
                 for src in set(sources):
                     st.markdown(f'<div class="source-citation">{src}</div>', unsafe_allow_html=True)
+
+
+def _extract_ppt_path(text: str) -> str:
+    match = re.search(r"\*\*PPT_FILE_PATH:\*\*\s*`([^`]+)`", text)
+    return match.group(1) if match else None
+
+
+def _remove_ppt_marker(text: str) -> str:
+    return re.sub(r"\n*---\n*\*\*PPT_FILE_PATH:\*\*\s*`[^`]+`", "", text).strip()
 
 
 def handle_query(query, api_key):
@@ -172,6 +198,18 @@ def handle_query(query, api_key):
 
                 formatted = ResponseFormatter.format_response(response, selected)
                 st.markdown(formatted)
+
+                ppt_path = _extract_ppt_path(response)
+                if ppt_path and os.path.exists(ppt_path):
+                    ppt_bytes = PPTGenerator.get_download_bytes(ppt_path)
+                    filename = os.path.basename(ppt_path)
+                    st.download_button(
+                        label="Download PowerPoint",
+                        data=ppt_bytes,
+                        file_name=filename,
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True,
+                    )
 
             except Exception as e:
                 error_msg = f"Error: {str(e)}"

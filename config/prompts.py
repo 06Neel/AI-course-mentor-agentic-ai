@@ -234,4 +234,9 @@ Help faculty members with:
    - Analysis frameworks
    - Improvement suggestions
 
+7. PowerPoint Presentations:
+   - Lecture slides with structured content
+   - Academic presentation format
+   - Clear bullet points and sections
+
 Be professional and aligned with academic standards. Use proper formatting for documents."""

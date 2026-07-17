@@ -4,6 +4,19 @@ from agents.base_agent import BaseAgent
 from config.prompts import Prompts
 from rag.retriever import Retriever
 
+PPT_KEYWORDS = [
+    "create ppt", "make ppt", "generate ppt", "create presentation",
+    "make presentation", "generate presentation", "create slides",
+    "make slides", "generate slides", "ppt on", "presentation on",
+    "slides on", "make a ppt", "create a ppt", "build a ppt",
+    "prepare ppt", "prepare presentation", "powerpoint",
+]
+
+
+def detect_ppt_request(query: str) -> bool:
+    q = query.lower().strip()
+    return any(kw in q for kw in PPT_KEYWORDS)
+
 
 class CoordinatorAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -51,6 +64,13 @@ Respond in JSON format only:
             document_context = self.retriever.get_context(query)
 
         full_context = f"{context}\n\n{document_context}".strip() if context else document_context
+
+        # Fast-path: detect PPT requests without LLM classification
+        if detect_ppt_request(query):
+            if "faculty" in self.agents:
+                return self.agents["faculty"].run(
+                    query, context=full_context, task_type="ppt", **kwargs
+                )
 
         agent_name = selected_agent
 
